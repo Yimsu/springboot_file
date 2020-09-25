@@ -1,0 +1,312 @@
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+	<title>Home</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+
+<script src="/js/jQuery-2.1.4.min.js"></script>
+
+<script>
+	$(document).ready(function() {
+		function getOriginalName(fileName){
+			if(checkImageType(fileName)){
+				return;
+			}
+
+			var idx = fileName.indexOf("_") + 1 ;
+
+			return fileName.substr(idx);
+		}
+
+		function getThumbnailName(fileName){
+			var front = fileName.substr(0,12);
+			var end = fileName.substr(12);
+
+			console.log("front : " + front);
+			console.log("end : " + end);
+
+			return front + "s_" + end;
+		}
+
+		function checkImageType(fileName){
+			var pattern = /jpg|gif|png|jpeg/i;
+
+			return fileName.match(pattern);
+		}
+
+		$(".uploadedList").on("click", "span", function(event){
+			$(this).parent("div").remove();
+		});
+
+		$("#inputFile").on("change", function(event){
+			console.log("change");
+
+			var files = event.target.files;
+
+			var file = files[0];
+
+			console.log(file);
+
+			var formData = new FormData();
+
+			formData.append("file", file);
+
+			$.ajax({
+				url: "/items/upload",
+				data: formData,
+				dataType:"text",
+				processData: false,
+				contentType: false,
+				type: "POST",
+				success: function(data){
+					console.log(data);
+
+					var str ="";
+
+					if(checkImageType(data)){
+						str = "<div><a href='/items/display?fileName=" + data + "'>"
+								+ "<img src='/items/display?fileName=" + getThumbnailName(data) + "'/>"
+								+ "</a><span>X</span></div>";
+					}
+					else{
+						str = "<div><a href='/items/display?fileName=" + data + "'>"
+								+ getOriginalName(data) + "</a><span>X</span></div>";
+					}
+
+					$(".uploadedList").append(str);
+				}
+			});
+		});
+
+		$("#listBtn").on("click", function() {
+			$.get("/items", function(data) {
+				console.log(data);
+
+				alert(JSON.stringify(data));
+			});
+		});
+
+		$("#readBtn").on("click", function() {
+			var itemId = $("#itemId");
+			var itemIdVal = itemId.val();
+
+			console.log(itemIdVal);
+
+			$.ajax({
+				type : "GET",
+				url : "/items/" + itemIdVal,
+				contentType : "application/json; charset=UTF-8",
+				success : function(data) {
+					console.log("data: " + data);
+
+					alert(JSON.stringify(data));
+
+					console.log("data: " + data.itemId);
+
+					$("#itemName").val(data.itemName);
+					$("#price").val(data.price);
+					$("#description").val(data.description);
+
+					$(".uploadedList").empty();
+
+					$.getJSON("/items/attach/"+data.itemId,function(list){
+
+						$(list).each(function(){
+							console.log("data : " + this);
+
+							var data = this;
+
+							var str ="";
+
+							if(checkImageType(data)){
+								str = "<div><a href='/items/display?fileName=" + data + "'>"
+										+ "<img src='/items/display?fileName=" + getThumbnailName(data) + "'/>"
+										+ "</a><span>X</span></div>";
+							}
+							else{
+								str = "<div><a href='/items/display?fileName=" + data + "'>"
+										+ getOriginalName(data) +"</a><span>X</span></div>";
+							}
+
+							$(".uploadedList").append(str);
+						});
+					});
+
+				},
+				error : function(xhr, status, error) {
+					alert("code:" + xhr.status + "\n"
+							+ "message:" + xhr.responseText + "\n"
+							+ "error:" + error);
+				}
+			});
+		});
+
+		$("#registerBtn").on("click", function() {
+			console.log("change");
+
+			var itemId = $("#itemId");
+			var itemName = $("#itemName");
+			var price = $("#price");
+			var description = $("#description");
+
+			var itemIdVal = itemId.val();
+			var itemNameVal = itemName.val();
+			var priceVal = price.val();
+			var descriptionVal = description.val();
+
+			var filenames =[];
+			$(".uploadedList a").each(function(index){
+				var value = $(this).attr("href");
+				value = value.substr(24);
+
+				filenames[index] = value;
+			});
+
+			console.log("filenames = " + filenames);
+
+			var itemObject = {
+				itemId : itemIdVal,
+				itemName : itemNameVal,
+				price : priceVal,
+				description : descriptionVal,
+				files : filenames
+			};
+
+			alert("JSON.stringify(itemObject) = " + JSON.stringify(itemObject));
+
+			$.ajax({
+				type : "POST",
+				url : "/items/",
+				data : JSON.stringify(itemObject),
+				contentType : "application/json; charset=UTF-8",
+				success : function() {
+					alert("Created");
+				},
+				error : function(xhr, textStatus, error) {
+					alert("code:" + xhr.status + "\n"
+							+ "message:" + xhr.responseText + "\n"
+							+ "error:" + error);
+				}
+			});
+
+		});
+
+		$("#deleteBtn").on("click", function() {
+			var itemId = $("#itemId");
+			var itemIdVal = itemId.val();
+
+			console.log(itemIdVal);
+
+			$.ajax({
+				type : "DELETE",
+				url : "/items/" + itemIdVal,
+				contentType : "application/json; charset=UTF-8",
+				success : function() {
+					alert("Deleted");
+				},
+				error : function(xhr, status, error) {
+					alert("code:" + xhr.status + "\n"
+							+ "message:" + xhr.responseText + "\n"
+							+ "error:" + error);
+				}
+			});
+		});
+
+		$("#modifyBtn").on("click", function() {
+			console.log("modify");
+
+			var itemId = $("#itemId");
+			var itemName = $("#itemName");
+			var price = $("#price");
+			var description = $("#description");
+
+			var itemIdVal = itemId.val();
+			var itemNameVal = itemName.val();
+			var priceVal = price.val();
+			var descriptionVal = description.val();
+
+			var filenames =[];
+			$(".uploadedList a").each(function(index){
+				var value = $(this).attr("href");
+				value = value.substr(24);
+
+				filenames[index] = value;
+			});
+
+			console.log("filenames = " + filenames);
+
+			var itemObject = {
+				itemId : itemIdVal,
+				itemName : itemNameVal,
+				price : priceVal,
+				description : descriptionVal,
+				files : filenames
+			};
+
+			$.ajax({
+				type : "PUT",
+				url : "/items/",
+				data : JSON.stringify(itemObject),
+				contentType : "application/json; charset=UTF-8",
+				success : function() {
+					alert("Modified");
+				},
+				error : function(xhr, status, error) {
+					alert("code:" + xhr.status + "\n"
+							+ "message:" + xhr.responseText + "\n"
+							+ "error:" + error);
+				}
+			});
+		});
+
+		$("#resetBtn").on("click", function() {
+			$("#itemId").val("");
+			$("#itemName").val("");
+			$("#price").val("");
+			$("#description").val("");
+
+			$(".uploadedList").empty();
+		});
+	});
+</script>
+
+<body>
+<h1>ajax Home.</h1>
+
+<table>
+	<tr>
+		<td><label for="itemId">itemId</label></td>
+		<td><input type="text" name="itemId" value="" id="itemId"></td>
+	</tr>
+	<tr>
+		<td><label for="itemName">itemName</label></td>
+		<td><input type="text" name="itemName" value="" id="itemName"></td>
+	</tr>
+	<tr>
+		<td><label for="price">price</label></td>
+		<td><input type="text" name="price" value="" id="price"></td>
+	</tr>
+	<tr>
+		<td><label for="description">description</label></td>
+		<td><textarea id="description" name="description"></textarea></td>
+	</tr>
+	<tr>
+		<td><label for="inputFile">file</label></td>
+		<td>
+			<input type="file" name="picture" id="inputFile" />
+			<div class="uploadedList"></div>
+		</td>
+	</tr>
+</table>
+
+<div>
+	<button id="listBtn">LIST</button>
+	<button id="readBtn">READ</button>
+	<button id="registerBtn">REGISTER</button>
+	<button id="deleteBtn">DELETE</button>
+	<button id="modifyBtn">MODIFY</button>
+	<button id="resetBtn">RESET</button>
+</div>
+</body>
+</html>
